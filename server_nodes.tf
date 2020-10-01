@@ -153,10 +153,63 @@ resource null_resource k8s_ca_certificates_install {
   }
 }
 
+resource null_resource root_server_install {
+
+  depends_on = [var.depends_on_, null_resource.k8s_ca_certificates_install]
+  triggers = {
+    on_immutable_changes = local.servers_metadata[local.root_server_name].immutable_fields_hash
+    on_new_version       = local.k3s_version
+  }
+
+  connection {
+    type = try(local.root_server_connection.type, "ssh")
+
+    host     = try(local.root_server_connection.host, local.root_server_connection.ip)
+    user     = try(local.root_server_connection.user, null)
+    password = try(local.root_server_connection.password, null)
+    port     = try(local.root_server_connection.port, null)
+    timeout  = try(local.root_server_connection.timeout, null)
+
+    script_path    = try(local.root_server_connection.script_path, null)
+    private_key    = try(local.root_server_connection.private_key, null)
+    certificate    = try(local.root_server_connection.certificate, null)
+    agent          = try(local.root_server_connection.agent, null)
+    agent_identity = try(local.root_server_connection.agent_identity, null)
+    host_key       = try(local.root_server_connection.host_key, null)
+
+    https    = try(local.root_server_connection.https, null)
+    insecure = try(local.root_server_connection.insecure, null)
+    use_ntlm = try(local.root_server_connection.use_ntlm, null)
+    cacert   = try(local.root_server_connection.cacert, null)
+
+    bastion_host        = try(local.root_server_connection.bastion_host, null)
+    bastion_host_key    = try(local.root_server_connection.bastion_host_key, null)
+    bastion_port        = try(local.root_server_connection.bastion_port, null)
+    bastion_user        = try(local.root_server_connection.bastion_user, null)
+    bastion_password    = try(local.root_server_connection.bastion_password, null)
+    bastion_private_key = try(local.root_server_connection.bastion_private_key, null)
+    bastion_certificate = try(local.root_server_connection.bastion_certificate, null)
+  }
+
+  // Upload k3s file
+  provisioner file {
+    content     = data.http.k3s_installer.body
+    destination = "/tmp/k3s-installer"
+  }
+
+  // Install k3s server
+  provisioner "remote-exec" {
+    inline = [
+      "INSTALL_K3S_VERSION=${local.k3s_version} sh /tmp/k3s-installer server ${local.servers_metadata[local.root_server_name].flags}",
+      "until kubectl get node ${local.root_server_name}; do sleep 1; done"
+    ]
+  }
+}
+
 resource null_resource servers_install {
   for_each = var.servers
 
-  depends_on = [var.depends_on_, null_resource.k8s_ca_certificates_install]
+  depends_on = [var.depends_on_, null_resource.root_server_install]
   triggers = {
     on_immutable_changes = local.servers_metadata[each.key].immutable_fields_hash
     on_new_version       = local.k3s_version
