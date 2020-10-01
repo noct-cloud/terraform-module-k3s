@@ -142,7 +142,7 @@ resource null_resource k8s_ca_certificates_install {
     bastion_private_key = try(local.root_server_connection.bastion_private_key, null)
     bastion_certificate = try(local.root_server_connection.bastion_certificate, null)
   }
-  
+
   provisioner "remote-exec" {
     inline = ["mkdir -p /var/lib/rancher/k3s/server/tls/"]
   }
