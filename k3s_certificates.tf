@@ -23,8 +23,8 @@ locals {
     ]
   )
   cluster_ca_certificate = var.generate_ca_certificates ? local.certificates_by_type["server-ca"] : null
-  client_certificate     = var.generate_ca_certificates ? tls_locally_signed_cert.master_user[0].cert_pem : null
-  client_key             = var.generate_ca_certificates ? tls_private_key.master_user[0].private_key_pem : null
+  client_certificate     = length(tls_locally_signed_cert.master_user) ? tls_locally_signed_cert.master_user[0].cert_pem : null
+  client_key             = length(tls_private_key.master_user) > 0 ? tls_private_key.master_user[0].private_key_pem : null
 }
 
 # Keys
