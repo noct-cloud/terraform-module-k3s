@@ -3,7 +3,7 @@ locals {
   certificates_names = var.generate_ca_certificates ? ["client-ca", "server-ca", "request-header-key-ca"] : []
   certificates_types = { for s in local.certificates_names : index(local.certificates_names, s) => s }
   certificates_by_type = { for s in local.certificates_names : s =>
-    tls_self_signed_cert.kubernetes_ca_certs[index(local.certificates_names, s)].cert_pem
+    try(tls_self_signed_cert.kubernetes_ca_certs[index(local.certificates_names, s)].cert_pem, null)
   }
   certificates_files = flatten(
     [      
@@ -22,9 +22,9 @@ locals {
       ,var.kubernetes_certificates 
     ]
   )
-  cluster_ca_certificate = var.generate_ca_certificates ? local.certificates_by_type["server-ca"] : null
-  client_certificate     = length(tls_locally_signed_cert.master_user) > 0 ? tls_locally_signed_cert.master_user[0].cert_pem : null
-  client_key             = length(tls_private_key.master_user) > 0 ? tls_private_key.master_user[0].private_key_pem : null
+  cluster_ca_certificate = try(local.certificates_by_type["server-ca"], null)
+  client_certificate     = try(tls_locally_signed_cert.master_user[0].cert_pem, null)
+  client_key             = try(tls_private_key.master_user[0].private_key_pem, null)
 }
 
 # Keys
